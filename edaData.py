@@ -4,6 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import PolynomialFeatures
 import pickle
+from sklearn.impute import SimpleImputer
 
 source_data = pd.read_csv('../data/training_dataset.csv')
 label = source_data['buffer_rate']
