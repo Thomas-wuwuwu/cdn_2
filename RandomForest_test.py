@@ -7,7 +7,7 @@ from sklearn.metrics import r2_score
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 
-source_data = pd.read_csv('../data/training_dataset.csv')
+source_data = pd.read_csv('data/training_dataset.csv')
 label = source_data['buffer_rate']
 source_train_data = source_data.iloc[:, 2:17]
 # print(source_train_data.head(10))

@@ -17,7 +17,7 @@ import numpy as np
 # print(score)
 model = cb.CatBoostRegressor()
 model.load_model('../save/1105_1')
-with open('../data/test_poly.pkl', 'rb') as file:
+with open('data/test_poly.pkl', 'rb') as file:
     train2 = pickle.load(file)
 source_test_data = train2.iloc[:, 2:]
 cat_pred = model.predict(source_test_data)
