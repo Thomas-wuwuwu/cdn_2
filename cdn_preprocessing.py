@@ -44,6 +44,10 @@ label = source_data['buffer_rate']
 # source_train_data = source_data.drop(['buffer_rate'], axis=1)
 source_train_data = source_data.copy()
 source_test_data = pd.read_csv('data/test_dataset.csv')
+source_train_data.drop(['tcp_conntime', 'synack1_ratio', 'inner_network_droprate'], axis=1)
+source_test_data.drop(['tcp_conntime', 'synack1_ratio', 'inner_network_droprate'], axis=1)
+label_data_log = np.log1p(label)
+
 features = source_test_data.columns
 # 标签编码
 colss = ['domain_name', 'node_name']
@@ -58,14 +62,14 @@ for col in colss:
     source_test_data[col] = labs[col].transform(source_test_data[col])
 
 # 切分训练集和验证集
-X_train, X_val, y_train, y_val = train_test_split(source_train_data, label, test_size=0.2, random_state=42,
-                                                  shuffle=False)
-print("原始样本集 X 大小为：", source_train_data.shape[0])
-print("训练集 X_train 大小为：", X_train.shape[0])
-print("测试集 X_test 大小为：", X_val.shape[0])
-y_val_dataframe = pd.DataFrame(y_val)
-y_val_dataframe['line_id'] = y_val_dataframe.index
-y_val_dataframe.reset_index()
+# X_train, X_val, y_train, y_val = train_test_split(source_train_data, label, test_size=0.2, random_state=42,
+#                                                   shuffle=False)
+# print("原始样本集 X 大小为：", source_train_data.shape[0])
+# print("训练集 X_train 大小为：", X_train.shape[0])
+# print("测试集 X_test 大小为：", X_val.shape[0])
+# y_val_dataframe = pd.DataFrame(y_val)
+# y_val_dataframe['line_id'] = y_val_dataframe.index
+# y_val_dataframe.reset_index()
 
 # cat_model = cb.CatBoostClassifier(iterations=3000,
 #                                   depth=7,
@@ -83,25 +87,26 @@ cat_model = cb.CatBoostRegressor(iterations=2000,
                                  random_seed=50,
                                  od_type='Iter',
                                  od_wait=50)
+cat_model.load_model('save/1109_1')
 
-kfold = KFold(n_splits=5, shuffle=True, random_state=43)
+kfold = KFold(n_splits=5, shuffle=True, random_state=56)
 test_predictions = np.zeros(len(source_test_data))
-for fold, (train_idx, val_idx) in enumerate(kfold.split(source_train_data, source_train_data["buffer_rate"])):
+for fold, (train_idx, val_idx) in enumerate(kfold.split(source_train_data, label_data_log)):
     X_train, X_val = source_train_data[features].iloc[train_idx], source_train_data[features].iloc[val_idx]
-    y_train, y_val = source_train_data["buffer_rate"].iloc[train_idx], source_train_data["buffer_rate"].iloc[val_idx]
+    y_train, y_val = label_data_log.iloc[train_idx], label_data_log.iloc[val_idx]
     # model = cat(task_type="CPU")
-    cat_model.fit(X_train, y_train, verbose=0)
+    cat_model.fit(X_train, y_train, verbose=0, eval_set=(X_val, y_val))
     print(f"第{fold + 1}折测试集的精度:", Evaluation_Metrics(y_true=y_val, y_pred=cat_model.predict(X_val)))
     test_pred = cat_model.predict(source_test_data)
-    test_predictions += test_pred / 5
+    test_predictions += np.expm1(test_pred) / 5
 
 # cat_model.fit(X_train, y_train, eval_set=(X_val, y_val))
-cat_model.save_model('save/1109_1', format='cbm')
+cat_model.save_model('save/1111_1', format='cbm')
 
 # cat_pred = cat_model.predict(X_val)
 
 # cat_pred_dataframe = pd.DataFrame(cat_pred, columns=['predict'], index=y_val_dataframe['line_id'])
 # print(cat_pred_dataframe.head())
 
-test_df = pd.DataFrame({'line_number': source_test_data.index+1, 'buffer_rate_prediction': test_predictions})
-test_df.to_csv(f'result/test_1110_{5}fold_seed{43}_1.csv', index=False)
+test_df = pd.DataFrame({'line_number': source_test_data.index + 1, 'buffer_rate_prediction': test_predictions})
+test_df.to_csv(f'result/test_1111_{5}fold_seed{56}_1.csv', index=False)
