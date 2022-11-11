@@ -3,25 +3,47 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import LabelEncoder
 import pickle
 from sklearn.impute import SimpleImputer
 
-source_data = pd.read_csv('data/training_dataset.csv')
-label = source_data['buffer_rate']
-c_source_data = source_data.copy()
-c_source_data['id_domain'] = pd.Categorical(c_source_data.domain_name).codes
-c_source_data['id_node'] = pd.Categorical(c_source_data.node_name).codes
-c_source_data = c_source_data.drop('buffer_rate', axis=1)
-c_source_data['id'] = c_source_data.index
-train_data = c_source_data.iloc[:, 2:19]
-
-test_data = pd.read_csv('data/test_dataset.csv')
-c_test_data =test_data.copy()
-c_test_data['id_domain'] = pd.Categorical(c_test_data.domain_name).codes
-c_test_data['id_node'] = pd.Categorical(c_test_data.node_name).codes
-c_test_data['id'] = c_test_data.index
+# 第一种处理方式，将domain和node编码
+# source_data = pd.read_csv('data/training_dataset.csv')
+# label = source_data['buffer_rate']
+# c_source_data = source_data.copy()
+# c_source_data['id_domain'] = pd.Categorical(c_source_data.domain_name).codes
+# c_source_data['id_node'] = pd.Categorical(c_source_data.node_name).codes
+# c_source_data = c_source_data.drop('buffer_rate', axis=1)
+# c_source_data['id'] = c_source_data.index
+# train_data = c_source_data.iloc[:, 2:19]
+#
+# test_data = pd.read_csv('data/test_dataset.csv')
+# c_test_data =test_data.copy()
+# c_test_data['id_domain'] = pd.Categorical(c_test_data.domain_name).codes
+# c_test_data['id_node'] = pd.Categorical(c_test_data.node_name).codes
+# c_test_data['id'] = c_test_data.index
 
 # print(c_source_data.dtypes)
+# 第二种处理方式，编码后，去除tcp_conntime
+source_data = pd.read_csv('data/training_dataset.csv')
+label = source_data['buffer_rate']
+source_train_data = source_data.copy()
+source_test_data = pd.read_csv('data/test_dataset.csv')
+source_train_data.drop(['tcp_conntime'], axis=1)
+source_test_data.drop(['tcp_conntime'], axis=1)
+features = source_test_data.columns
+
+# 标签编码
+colss = ['domain_name', 'node_name']
+labs = {}
+for col in colss:
+    lab = LabelEncoder()
+    lab.fit(source_train_data[col].values.tolist() + source_test_data[col].values.tolist())
+    labs[col] = lab
+
+for col in colss:
+    source_train_data[col] = labs[col].transform(source_train_data[col])
+    source_test_data[col] = labs[col].transform(source_test_data[col])
 
 
 # 相关性的查看
@@ -33,6 +55,9 @@ def view_corr(df):
     sns.heatmap(corr, cmap=plt.cm.RdYlBu_r, annot=True)
     print(corr)
     plt.show()
+
+
+view_corr(source_train_data)
 
 
 def missing_value_table(df):
@@ -68,13 +93,12 @@ def features_add(df):
     train_df = df.merge(poly_features, on='id', how='left')
     return train_df
 
-
 # train_poly = features_add(c_source_data)
 # train_poly = train_poly.drop('id', axis=1)
 # train_poly.to_pickle('../data/train_poly.pkl')
 # print(train_poly.head(10))
 
-test_poly = features_add(c_test_data)
-test_poly = test_poly.drop('id', axis=1)
-test_poly.to_pickle('../data/test_poly.pkl')
-print(test_poly.head(10))
+# test_poly = features_add(c_test_data)
+# test_poly = test_poly.drop('id', axis=1)
+# test_poly.to_pickle('../data/test_poly.pkl')
+# print(test_poly.head(10))
